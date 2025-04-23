@@ -129,9 +129,25 @@ def obtain_gradients_with_adam(model, batch, avg, avg_sq):
 
 def prepare_optimizer_state(model, optimizer_state, device):
     names = [n for n, p in model.named_parameters() if p.requires_grad]
-    avg = torch.cat([optimizer_state[n]["exp_avg"].view(-1) for n in names])
-    avg_sq = torch.cat([optimizer_state[n]["exp_avg_sq"].view(-1)
-                       for n in names])
+    # Check if optimizer_state uses integer keys (indices) instead of names
+    if all(isinstance(k, int) for k in optimizer_state.keys()):
+        print("Optimizer state uses integer keys. Accessing by index.")
+        # Assuming the order of parameters in `names` matches the order used for saving optimizer state indices
+        num_params = len(names)
+        if len(optimizer_state) < num_params:
+            print(
+                f"Warning: Optimizer state has {len(optimizer_state)} entries, but model has {num_params} trainable parameters. Mismatch possible.")
+            # Attempt to load only the available states
+            num_params = len(optimizer_state)
+
+        avg = torch.cat([optimizer_state[i]["exp_avg"].view(-1) for i in range(num_params)])
+        avg_sq = torch.cat([optimizer_state[i]["exp_avg_sq"].view(-1) for i in range(num_params)])
+    else:
+        # Original logic: access by parameter name
+        print("Optimizer state uses string keys (names). Accessing by name.")
+        avg = torch.cat([optimizer_state[n]["exp_avg"].view(-1) for n in names])
+        avg_sq = torch.cat([optimizer_state[n]["exp_avg_sq"].view(-1) for n in names])
+
     avg = avg.to(device)
     avg_sq = avg_sq.to(device)
     return avg, avg_sq

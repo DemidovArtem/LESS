@@ -126,6 +126,14 @@ if isinstance(model, PeftModel):
 adam_optimizer_state = None
 if args.info_type == "grads" and args.gradient_type == "adam":
     optimizer_path = os.path.join(args.model_path, "optimizer.bin")
+    if not os.path.exists(optimizer_path):
+        # Try .pt if .bin doesn't exist
+        optimizer_path_pt = os.path.join(args.model_path, "optimizer.pt")
+        if os.path.exists(optimizer_path_pt):
+            optimizer_path = optimizer_path_pt
+        else:
+            print(f"ERROR: Optimizer state file not found at {optimizer_path} or {optimizer_path_pt}")
+            exit()
     adam_optimizer_state = torch.load(
         optimizer_path, map_location="cpu")["state"]
 

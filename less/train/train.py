@@ -4,22 +4,19 @@ import logging
 import os
 import random
 import sys
-import time
 
 import datasets
-import torch
 import torch.distributed as dist
 import transformers
+from less.data_selection.get_training_dataset import get_training_dataset
+from less.train.data_arguments import DataArguments, get_data_statistics
+from less.train.model_arguments import ModelArguments, add_padding_to_tokenizer
+from less.train.training_arguments import TrainingArguments
 # from instruction_tuning.train.lora_trainer import LoRAFSDPTrainer, Trainer
 from peft import LoraConfig, PeftModel, TaskType, get_peft_model
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           DataCollatorForSeq2Seq, HfArgumentParser, Trainer,
                           set_seed)
-
-from less.data_selection.get_training_dataset import get_training_dataset
-from less.train.data_arguments import DataArguments, get_data_statistics
-from less.train.model_arguments import ModelArguments, add_padding_to_tokenizer
-from less.train.training_arguments import TrainingArguments
 
 logger = logging.getLogger(__name__)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -106,6 +103,7 @@ def main():
         else:
             def make_inputs_require_grad(module, input, output):
                 output.requires_grad_(True)
+
             model.get_input_embeddings().register_forward_hook(make_inputs_require_grad)
 
     get_data_statistics(train_dataset)
@@ -113,7 +111,6 @@ def main():
     if "dataset" in train_dataset.features:
         train_dataset = train_dataset.remove_columns(
             ["dataset", "id", "messages"])
-            
 
     for index in random.sample(range(len(train_dataset)), 1):
         logger.info(
@@ -144,7 +141,51 @@ def main():
     elif not dist.is_initialized():
         print(model)
 
-    trainer = Trainer(
+    class WeightedTrainer(Trainer):
+
+        def compute_loss(self, model, inputs, return_outputs=False):
+            """
+            How the loss is computed by Trainer. By default, all models return the loss in the first element.
+
+            Subclass and override for custom behavior.
+            """
+            from transformers.models.auto.modeling_auto import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
+            from transformers.modeling_utils import unwrap_model
+            from transformers.utils.import_utils import is_peft_available
+            if self.label_smoother is not None and "labels" in inputs:
+                labels = inputs.pop("labels")
+            else:
+                labels = None
+            # print(f'{inputs["labels"].size()=}')
+            # print(f'{inputs["input_ids"].size()=}')
+            outputs = model(**inputs)
+            # Save past state if it exists
+            # TODO: this needs to be fixed and made cleaner later.
+            if self.args.past_index >= 0:
+                self._past = outputs[self.args.past_index]
+            if labels is not None:
+                unwrapped_model = unwrap_model(model)
+                if is_peft_available() and isinstance(unwrapped_model, PeftModel):
+                    model_name = unwrapped_model.base_model.model._get_name()
+                else:
+                    model_name = unwrapped_model._get_name()
+                if model_name in MODEL_FOR_CAUSAL_LM_MAPPING_NAMES.values():
+                    loss = self.label_smoother(outputs, labels, shift_labels=True)
+                else:
+                    loss = self.label_smoother(outputs, labels)
+            else:
+                if isinstance(outputs, dict) and "loss" not in outputs:
+                    raise ValueError(
+                        "The model did not return a loss from the inputs, only the following keys: "
+                        f"{','.join(outputs.keys())}. For reference, the inputs it received are {','.join(inputs.keys())}."
+                    )
+                # We don't use .loss here since the model may return tuples instead of ModelOutput.
+                loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
+            # print(f'{loss=}')
+
+            return (loss, outputs) if return_outputs else loss
+
+    trainer = WeightedTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,

@@ -39,6 +39,10 @@ class DataArguments:
         default=1.0, metadata={"help": ("Sampling percentage for each dataset")},
     )
 
+    target_task_name: Optional[str] = field(
+        default=None, metadata={"help": ("Name of the task to load weights for loss if there are any.")},
+    )
+
 
 def get_data_statistics(lm_datasets):
     """ Get the data statistics of the dataset. """

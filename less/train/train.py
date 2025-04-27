@@ -6,6 +6,7 @@ import random
 import sys
 
 import datasets
+import pandas as pd
 import torch.distributed as dist
 import transformers
 from less.data_selection.get_training_dataset import get_training_dataset
@@ -22,9 +23,59 @@ logger = logging.getLogger(__name__)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
+class WeightedTrainer(Trainer):
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        """
+        How the loss is computed by Trainer. By default, all models return the loss in the first element.
+
+        Subclass and override for custom behavior.
+        """
+        from transformers.models.auto.modeling_auto import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
+        from transformers.modeling_utils import unwrap_model
+        from transformers.utils.import_utils import is_peft_available
+        if self.label_smoother is not None and "labels" in inputs:
+            labels = inputs.pop("labels")
+        else:
+            labels = None
+        outputs = model(**inputs)
+        # Save past state if it exists
+        # TODO: this needs to be fixed and made cleaner later.
+        if self.args.past_index >= 0:
+            self._past = outputs[self.args.past_index]
+        if labels is not None:
+            unwrapped_model = unwrap_model(model)
+            if is_peft_available() and isinstance(unwrapped_model, PeftModel):
+                model_name = unwrapped_model.base_model.model._get_name()
+            else:
+                model_name = unwrapped_model._get_name()
+            if model_name in MODEL_FOR_CAUSAL_LM_MAPPING_NAMES.values():
+                loss = self.label_smoother(outputs, labels, shift_labels=True)
+            else:
+                loss = self.label_smoother(outputs, labels)
+        else:
+            if isinstance(outputs, dict) and "loss" not in outputs:
+                raise ValueError(
+                    "The model did not return a loss from the inputs, only the following keys: "
+                    f"{','.join(outputs.keys())}. For reference, the inputs it received are {','.join(inputs.keys())}."
+                )
+            # We don't use .loss here since the model may return tuples instead of ModelOutput.
+            loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
+        if 'weights' in inputs:
+            weights = inputs.pop('weights')
+            if weights is not None:
+                loss *= weights
+            else:
+                print('None weight')
+        else:
+            print('Weight is not defined')
+        return (loss, outputs) if return_outputs else loss
+
+
 def main():
     parser = HfArgumentParser(
-        (ModelArguments, DataArguments, TrainingArguments))
+        (ModelArguments, DataArguments, TrainingArguments)
+    )
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         model_args, data_args, training_args = parser.parse_json_file(
             json_file=os.path.abspath(sys.argv[1]))
@@ -141,49 +192,34 @@ def main():
     elif not dist.is_initialized():
         print(model)
 
-    class WeightedTrainer(Trainer):
+    if data_args.target_task_name:
+        scores_path = os.path.join(
+            os.path.dirname(data_args.train_files[0]),
+            f'scores.csv'
+        )
 
-        def compute_loss(self, model, inputs, return_outputs=False):
-            """
-            How the loss is computed by Trainer. By default, all models return the loss in the first element.
+        scores_df = pd.read_csv(scores_path)
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        scores_df['score_normalized'] = scaler.fit_transform(scores_df[['score']])
+        scores_df['score_normalized'] -= scores_df['score_normalized'].min()
+        scores_df['score_normalized'] += 1
+        scores_df['score_normalized'] /= scores_df['score_normalized'].sum()
+        m = len(train_dataset)
+        percentage = 0.05
+        n = m / percentage
+        scores_df['weight'] = 1 / (n * m * scores_df['score_normalized'])
 
-            Subclass and override for custom behavior.
-            """
-            from transformers.models.auto.modeling_auto import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
-            from transformers.modeling_utils import unwrap_model
-            from transformers.utils.import_utils import is_peft_available
-            if self.label_smoother is not None and "labels" in inputs:
-                labels = inputs.pop("labels")
-            else:
-                labels = None
-            # print(f'{inputs["labels"].size()=}')
-            # print(f'{inputs["input_ids"].size()=}')
-            outputs = model(**inputs)
-            # Save past state if it exists
-            # TODO: this needs to be fixed and made cleaner later.
-            if self.args.past_index >= 0:
-                self._past = outputs[self.args.past_index]
-            if labels is not None:
-                unwrapped_model = unwrap_model(model)
-                if is_peft_available() and isinstance(unwrapped_model, PeftModel):
-                    model_name = unwrapped_model.base_model.model._get_name()
-                else:
-                    model_name = unwrapped_model._get_name()
-                if model_name in MODEL_FOR_CAUSAL_LM_MAPPING_NAMES.values():
-                    loss = self.label_smoother(outputs, labels, shift_labels=True)
-                else:
-                    loss = self.label_smoother(outputs, labels)
-            else:
-                if isinstance(outputs, dict) and "loss" not in outputs:
-                    raise ValueError(
-                        "The model did not return a loss from the inputs, only the following keys: "
-                        f"{','.join(outputs.keys())}. For reference, the inputs it received are {','.join(inputs.keys())}."
-                    )
-                # We don't use .loss here since the model may return tuples instead of ModelOutput.
-                loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
-            # print(f'{loss=}')
-
-            return (loss, outputs) if return_outputs else loss
+        weights_map = {
+            (row['file_name'], str(row['index'])): row['weight']
+            for _, row in scores_df.iterrows()
+        }
+        print(train_dataset)
+        weights_list = [
+            weights_map[(train_dataset[index]['dataset'], str(train_dataset[index]['id']))]
+            for index in range(len(train_dataset))
+        ]
+        train_dataset = train_dataset.add_column("weights", weights_list)
 
     trainer = WeightedTrainer(
         model=model,

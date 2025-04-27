@@ -1,7 +1,7 @@
 # warmup
 
 export DATA_DIR=../data
-export PERCENTAGE=0.001 # percentage of the full data to train, you can specify the training file you want to use in the script
+export PERCENTAGE=0.05 # percentage of the full data to train, you can specify the training file you want to use in the script
 export DATA_SEED=3
 export MODEL_PATH=meta-llama/Llama-2-7b-hf
 export WARMUP_JOB_NAME=llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}
@@ -24,8 +24,8 @@ export SELECT_DIMS="4096 8192" # We use 8192 as our default projection dimension
 
 # train
 
-export TARGET_TASK_NAME="mmlu-chat"
-export TRAIN_FILES=../data/selected_data/${TARGET_TASK_NAME}_adam_sim_trainp${PERCENTAGE}_seed${SEED}_p${PERCENTAGE}.jsonl
-export TRAIN_JOB_NAME=llama2-7b-less-p${PERCENTAGE}-lora
+export TARGET_TASK_NAME="tydiqa"
+export TRAIN_FILES=../data/selected_data/${TARGET_TASK_NAME}/top_p0.05.jsonl
+export TRAIN_JOB_NAME=llama2-7b-less-p${PERCENTAGE}-lora-weighted
 
 

@@ -1,16 +1,14 @@
 import argparse
 import json
 import os
-import time
 
 import numpy as np
 import pandas as pd
 import torch
-from tqdm import tqdm
-
 from eval.mmlu.categories import categories, subcategories
 from eval.utils import (dynamic_import_function, get_next_word_predictions,
                         load_hf_lm_and_tokenizer, query_openai_chat_model)
+from tqdm import tqdm
 
 choices = ["A", "B", "C", "D"]
 
@@ -62,7 +60,7 @@ def eval_hf_model(args, subject, model, tokenizer, dev_df, test_df, batch_size=1
                 prompt += "The answer is:"
             else:
                 prompt += " The answer is:"
-        
+
         tokenized_prompt = tokenizer(
             prompt, truncation=False, add_special_tokens=False).input_ids
         # make sure every prompt is less than 2048 tokens
@@ -89,7 +87,8 @@ def eval_hf_model(args, subject, model, tokenizer, dev_df, test_df, batch_size=1
     answer_choice_ids = [tokenizer.encode(
         " " + answer_choice, add_special_tokens=False)[-1] for answer_choice in choices]
     pred_indices, all_probs = get_next_word_predictions(
-        model, tokenizer, prompts, candidate_token_ids=answer_choice_ids, return_token_predictions=False, batch_size=batch_size
+        model, tokenizer, prompts, candidate_token_ids=answer_choice_ids, return_token_predictions=False,
+        batch_size=batch_size
     )
 
     # get the metrics
@@ -109,7 +108,6 @@ def eval_hf_model(args, subject, model, tokenizer, dev_df, test_df, batch_size=1
 
 
 def eval_openai_chat_engine(args, subject, engine, dev_df, test_df, batch_size=1):
-
     import tiktoken
     gpt_tokenizer = tiktoken.get_encoding("cl100k_base")
     # be careful, the tokenizer will tokenize " A" and "A" differently.
@@ -148,14 +146,13 @@ def eval_openai_chat_engine(args, subject, engine, dev_df, test_df, batch_size=1
 
     # dummy probs, just don't want to dig into the openai probs
     all_probs = np.array([[0.25, 0.25, 0.25, 0.25]
-                         for _ in range(len(test_df))])
+                          for _ in range(len(test_df))])
 
     print("Average accuracy {:.3f} - {}".format(acc, subject))
     return cors, acc, all_probs
 
 
 def main(args):
-
     if args.model_name_or_path:
         print("Loading model and tokenizer...")
         model, tokenizer = load_hf_lm_and_tokenizer(
@@ -179,7 +176,8 @@ def main(args):
 
     if args.subjects:
         assert all(
-            subj in subjects for subj in args.subjects), f"Some of the subjects you specified are not valid: {args.subjects}"
+            subj in subjects for subj in
+            args.subjects), f"Some of the subjects you specified are not valid: {args.subjects}"
         subjects = args.subjects
 
     if not os.path.exists(args.save_dir):
@@ -205,9 +203,10 @@ def main(args):
         if args.model_name_or_path:
             if args.eval_valid:
                 test_df = dev_df
-            
+
             cors, acc, probs = eval_hf_model(
-                args, subject, model, tokenizer, dev_df, test_df, args.eval_batch_size, k=args.ntrain if not args.eval_valid else 0)
+                args, subject, model, tokenizer, dev_df, test_df, args.eval_batch_size,
+                k=args.ntrain if not args.eval_valid else 0)
         else:
             cors, acc, probs = eval_openai_chat_engine(
                 args, subject, args.openai_engine, dev_df, test_df, args.eval_batch_size)
@@ -355,5 +354,5 @@ if __name__ == "__main__":
 
     # model_name_or_path and openai_engine cannot be both None or both not None.
     assert (args.model_name_or_path is None) != (
-        args.openai_engine is None), "Either model_name_or_path or openai_engine should be specified."
+            args.openai_engine is None), "Either model_name_or_path or openai_engine should be specified."
     main(args)

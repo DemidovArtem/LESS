@@ -17,8 +17,12 @@ def none_or_str(value):
 
 @dataclass
 class DataArguments:
-    train_files: List[str] = field(default_factory=list, metadata={
-                                   "help": "The input training data files (multiple files in glob format)."})
+    train_files: List[str] = field(
+        default_factory=list,
+        metadata={
+            "help": "The input training data files (multiple files in glob format)."
+        }
+    )
     overwrite_cache: bool = field(
         default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
     )
@@ -29,7 +33,10 @@ class DataArguments:
     max_seq_length: Optional[int] = field(
         default=None,
         metadata={
-            "help": ("The maximum total input sequence length after tokenization. Sequences longer than this will be truncated,")
+            "help": (
+                "The maximum total input sequence length after tokenization. "
+                "Sequences longer than this will be truncated,"
+            )
         },
     )
     sample_data_seed: int = field(
@@ -42,10 +49,14 @@ class DataArguments:
     target_task_name: Optional[str] = field(
         default=None, metadata={"help": ("Name of the task to load weights for loss if there are any.")},
     )
+    scaling: Optional[str] = field(
+        default=None, metadata={"help": ("Scaling strategy to use")},
+    )
 
 
 def get_data_statistics(lm_datasets):
     """ Get the data statistics of the dataset. """
+
     def get_length(examples):
         lengths = [len(ids) for ids in examples["input_ids"]]
 

@@ -23,7 +23,7 @@ def add_weights(train_dataset, data_args, scaling: str = 'standard'):
         f'scores.csv'
     )
     scores_df = pd.read_csv(scores_path)
-    if scaling != 'none':
+    if scaling is not None and scaling != 'none':
         scaling_mapping[scaling](scores_df)
         m = len(train_dataset)
         percentage = 0.05

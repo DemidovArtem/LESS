@@ -25,6 +25,7 @@ export SELECT_DIMS="4096 8192" # We use 8192 as our default projection dimension
 # train
 
 export TARGET_TASK_NAME="tydiqa"
+export SCORE_SCALING='standard'
 export TRAIN_FILES=../data/selected_data/${TARGET_TASK_NAME}/top_p0.05.jsonl
 export TRAIN_JOB_NAME=llama2-7b-less-p${PERCENTAGE}-lora-weighted
 

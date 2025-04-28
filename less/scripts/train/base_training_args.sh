@@ -31,4 +31,5 @@ export base_training_args="--do_train True \
 --lora_target_modules q_proj k_proj v_proj o_proj \
 --learning_rate 2e-05 \
 --per_device_train_batch_size 1 \
---gradient_accumulation_steps 32"
+--gradient_accumulation_steps 32 \
+--remove_unused_columns=False"

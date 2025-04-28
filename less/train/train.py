@@ -6,7 +6,6 @@ import random
 import sys
 
 import datasets
-import pandas as pd
 import torch.distributed as dist
 import transformers
 from less.data_selection.get_training_dataset import get_training_dataset
@@ -18,6 +17,8 @@ from peft import LoraConfig, PeftModel, TaskType, get_peft_model
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           DataCollatorForSeq2Seq, HfArgumentParser, Trainer,
                           set_seed)
+
+from LESS.less.train.weighting_strategy import add_weights
 
 logger = logging.getLogger(__name__)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -38,6 +39,9 @@ class WeightedTrainer(Trainer):
             labels = inputs.pop("labels")
         else:
             labels = None
+        weights = None
+        if 'weights' in inputs:
+            weights = inputs.pop('weights')
         outputs = model(**inputs)
         # Save past state if it exists
         # TODO: this needs to be fixed and made cleaner later.
@@ -61,12 +65,9 @@ class WeightedTrainer(Trainer):
                 )
             # We don't use .loss here since the model may return tuples instead of ModelOutput.
             loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
-        if 'weights' in inputs:
-            weights = inputs.pop('weights')
-            if weights is not None:
-                loss *= weights
-            else:
-                print('None weight')
+        if weights is not None:
+            weights = weights.squeeze()
+            loss *= weights
         else:
             print('Weight is not defined')
         return (loss, outputs) if return_outputs else loss
@@ -81,7 +82,6 @@ def main():
             json_file=os.path.abspath(sys.argv[1]))
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-
     # Setup logging
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -158,7 +158,12 @@ def main():
             model.get_input_embeddings().register_forward_hook(make_inputs_require_grad)
 
     get_data_statistics(train_dataset)
-
+    weights_map = {}
+    if data_args.target_task_name:
+        train_dataset, weights_map = add_weights(
+            train_dataset=train_dataset,
+            data_args=data_args,
+        )
     if "dataset" in train_dataset.features:
         train_dataset = train_dataset.remove_columns(
             ["dataset", "id", "messages"])
@@ -179,47 +184,24 @@ def main():
                                        tokenizer=tokenizer,
                                        max_length=data_args.max_seq_length)
 
-    # for testing if the model can go through full length
-    # import torch
-    # from datasets import Dataset
-
-    # input_ids = [torch.randint(0, 32000, (2048, )) for _ in range(10000)]
-    # attention_mask = [torch.ones(2048, ) for _ in range(10000)]
-    # train_dataset = Dataset.from_dict({"input_ids": input_ids, "labels": input_ids, "attention_mask": attention_mask})
+        if data_args.target_task_name:
+            weights_list = [
+                weights_map[
+                    (
+                        f"{analysis_dataset[index]['dataset']}_influence_score.pt",
+                        str(analysis_dataset[index]['id'].split('_')[-1])
+                    )
+                ]
+                for index in range(len(analysis_dataset))
+            ]
+            analysis_dataset = analysis_dataset.add_column("weights", weights_list)
+            print('Weights were added to analysis_dataset!')
+            print(analysis_dataset[0])
 
     if dist.is_initialized() and dist.get_rank() == 0:
         print(model)
     elif not dist.is_initialized():
         print(model)
-
-    if data_args.target_task_name:
-        scores_path = os.path.join(
-            os.path.dirname(data_args.train_files[0]),
-            f'scores.csv'
-        )
-
-        scores_df = pd.read_csv(scores_path)
-        from sklearn.preprocessing import StandardScaler
-        scaler = StandardScaler()
-        scores_df['score_normalized'] = scaler.fit_transform(scores_df[['score']])
-        scores_df['score_normalized'] -= scores_df['score_normalized'].min()
-        scores_df['score_normalized'] += 1
-        scores_df['score_normalized'] /= scores_df['score_normalized'].sum()
-        m = len(train_dataset)
-        percentage = 0.05
-        n = m / percentage
-        scores_df['weight'] = 1 / (n * m * scores_df['score_normalized'])
-
-        weights_map = {
-            (row['file_name'], str(row['index'])): row['weight']
-            for _, row in scores_df.iterrows()
-        }
-        print(train_dataset)
-        weights_list = [
-            weights_map[(train_dataset[index]['dataset'], str(train_dataset[index]['id']))]
-            for index in range(len(train_dataset))
-        ]
-        train_dataset = train_dataset.add_column("weights", weights_list)
 
     trainer = WeightedTrainer(
         model=model,
@@ -228,7 +210,11 @@ def main():
         eval_dataset=analysis_dataset,
         tokenizer=tokenizer,
         data_collator=DataCollatorForSeq2Seq(
-            tokenizer=tokenizer, model=model, padding="longest")
+            tokenizer=tokenizer,
+            model=model,
+            padding="longest",
+
+        )
     )
 
     # Training

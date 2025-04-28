@@ -1,11 +1,9 @@
 import json
 import os
-from hashlib import md5
 from typing import Iterable, List, Optional
 
 import torch
 import torch.nn.functional as F
-from functorch import grad, make_functional_with_buffers, vmap
 from peft import PeftModel
 from torch import Tensor
 from torch.nn.functional import normalize
@@ -47,7 +45,7 @@ def get_output(model,
                labels=None,
                ) -> Tensor:
     logits = model(weights, buffers, *(input_ids.unsqueeze(0),
-                   attention_mask.unsqueeze(0))).logits
+                                       attention_mask.unsqueeze(0))).logits
     labels = labels.unsqueeze(0)
     loss_fct = F.cross_entropy
     shift_logits = logits[..., :-1, :].contiguous()
@@ -82,7 +80,7 @@ def get_number_of_params(model):
         ) if p.requires_grad and "lora" not in n]
         assert len(names) == 0
     num_params = sum([p.numel()
-                     for p in model.parameters() if p.requires_grad])
+                      for p in model.parameters() if p.requires_grad])
     print(f"Total number of parameters that require gradients: {num_params}")
     return num_params
 
@@ -403,7 +401,7 @@ def collect_reps(dataloader: torch.utils.data.DataLoader,
 
 def get_loss(dataloader: torch.utils.data.DataLoader,
              model: torch.nn.Module,
-             output_dir: str,):
+             output_dir: str, ):
     """ Get the loss of the model on the given dataset. """
     total_loss = 0
     total_tokens = 0
@@ -417,6 +415,6 @@ def get_loss(dataloader: torch.utils.data.DataLoader,
 
     print(f"Loss: {total_loss / total_tokens}")
     result = {"num_tokens": total_tokens, "loss": (
-        total_loss / total_tokens)}
+            total_loss / total_tokens)}
     with open(os.path.join(output_dir, "loss.txt"), "w") as f:
         f.write(json.dumps(result, indent=4))

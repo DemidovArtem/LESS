@@ -4,19 +4,17 @@
 
 import argparse
 import os
-import pdb
 from copy import deepcopy
 from typing import Any
 
 import torch
-from peft import LoraConfig, PeftModel, TaskType, get_peft_model
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
 from less.data_selection.collect_grad_reps import (collect_grads, collect_reps,
                                                    get_loss)
 from less.data_selection.get_training_dataset import get_training_dataset
 from less.data_selection.get_validation_dataset import (get_dataloader,
                                                         get_dataset)
+from peft import LoraConfig, PeftModel, TaskType, get_peft_model
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def load_model(model_name_or_path: str,
@@ -56,7 +54,8 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--task', type=str, default=None,
                     help='Specify the task from bbh, tydiqa or mmlu. One of variables of task and train_file must be specified')
 parser.add_argument("--train_file", type=str,
-                    default=None, help="The path to the training data file we'd like to obtain the gradients/representations for. One of variables of task and train_file must be specified")
+                    default=None,
+                    help="The path to the training data file we'd like to obtain the gradients/representations for. One of variables of task and train_file must be specified")
 parser.add_argument(
     "--info_type", choices=["grads", "reps", "loss"], help="The type of information")
 parser.add_argument("--model_path", type=str,
@@ -90,7 +89,7 @@ parser.add_argument("--lora_alpha", type=float, default=32,
 parser.add_argument("--lora_dropout", type=float, default=0.1,
                     help="The value of lora_dropout hyperparameter")
 parser.add_argument("--lora_target_modules", nargs='+', default=[
-                    "q_proj", "k_proj", "v_proj", "o_proj"],  help="The list of lora_target_modules")
+    "q_proj", "k_proj", "v_proj", "o_proj"], help="The list of lora_target_modules")
 
 args = parser.parse_args()
 assert args.task is not None or args.train_file is not None

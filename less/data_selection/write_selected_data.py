@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 
 import torch
@@ -19,6 +20,12 @@ def parse_args():
                            default=None, help='The maximum number of samples')
     argparser.add_argument('--percentage', type=float, default=None,
                            help='The percentage of the data to be selected')
+    argparser.add_argument('--threshold', type=float, default=None,
+                           help='The threshold for total score of the selected samples. '
+                                'Used for iterative building of train set. Should be specified with percentage - '
+                                'the latter is used as overall boundary for iteration.')
+    argparser.add_argument('--num_iterations', type=int, default=None,
+                           help='The number of iterations to collect top-k in case we do it iteratively.')
 
     args = argparser.parse_args()
 
@@ -37,6 +44,7 @@ if __name__ == "__main__":
     args = parse_args()
     assert len(args.train_file_names) == len(args.train_files)
     assert args.percentage is not None or args.max_samples is not None
+    assert args.threshold is not None or args.num_iterations is not None
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     n_train_files = len(args.train_file_names)
 
@@ -48,13 +56,38 @@ if __name__ == "__main__":
         num_samples = []
         for score_path in score_paths:
             num_samples.append(
-                len(torch.load(score_path, map_location=device)))
+                len(torch.load(score_path, map_location=device))
+            )
         cumsum_num_samples = torch.cumsum(torch.tensor(num_samples), dim=0)
 
         total_samples = sum(num_samples)
+
+        prev_top_values = {}
+        iteration = None
         if args.percentage is not None:
             args.max_samples = int(args.percentage * total_samples)
-            data_amount_name = f"p{args.percentage}"
+            if args.threshold is None and args.num_iterations is None:
+                data_amount_name = f"p{args.percentage}"
+            else:
+                for _, _, files in os.walk(output_path):
+                    for file in files:
+                        if file.startswith('top_') and file.endswith('.jsonl'):
+                            file_index = file.split('_')[-1].split('.')[0]  # last value after _ and before extension
+                            file_index = int(file_index)
+                            with open(os.path.join(output_path, file), 'r') as past_file:
+                                prev_top_values[file_index] = [json.loads(line)['id'] for line in past_file]
+                iteration = 0
+                if prev_top_values:
+                    iteration = max(prev_top_values) + 1
+                # max_samples is reduced by the number of already selected items
+                prev_values_count = sum([len(value) for value in prev_top_values.values()])
+                if args.threshold:
+                    args.max_samples -= prev_values_count
+                    data_amount_name = f't{args.threshold}_{iteration}'
+                else:
+                    data_amount_name = f'p{args.percentage}_i{args.num_iterations}_{iteration}'
+                    args.max_samples = min(args.max_samples - prev_values_count,
+                                           args.max_samples // args.num_iterations)
         else:
             data_amount_name = f"num{args.max_samples}"
 
@@ -70,8 +103,14 @@ if __name__ == "__main__":
         data_from = torch.cat([torch.ones(line_num, dtype=torch.long)
                                * i for i, line_num in enumerate(num_samples)]).to(device)
         sorted_scores, sorted_index = torch.sort(
-            all_scores, dim=0, descending=True)
-        sorted_score_file = os.path.join(output_path, f"sorted.csv")
+            all_scores, dim=0, descending=True
+        )
+        sorted_file_name = 'sorted.csv'
+        if args.threshold:
+            sorted_file_name = f'sorted_t{args.threshold}_{iteration}.csv'
+        elif args.num_iterations:
+            sorted_file_name = f'sorted_p{args.percentage}_i{args.num_iterations}_{iteration}.csv'
+        sorted_score_file = os.path.join(output_path, sorted_file_name)
 
         data_from = data_from[sorted_index]
         sorted_index = file_specific_index[sorted_index]
@@ -81,23 +120,37 @@ if __name__ == "__main__":
                 file.write("file name, index, score\n")
                 for score, index, name in zip(sorted_scores, sorted_index, data_from):
                     file.write(
-                        f"{args.train_file_names[name.item()]}, {index.item()}, {round(score.item(), 6)}\n")
-
-        topk_scores, topk_indices = torch.topk(
-            all_scores.float(), args.max_samples, dim=0, largest=True)
+                        f"{args.train_file_names[name.item()]}, {index.item()}, {round(score.item(), 6)}\n"
+                    )
 
         all_lines = []
         for i, train_file in enumerate(args.train_files):
             with open(train_file, 'r', encoding='utf-8', errors='ignore') as file:
                 all_lines.append(file.readlines()[:num_samples[i]])
 
-        final_index_list = sorted_index[:args.max_samples].tolist()
-        final_data_from = data_from[:args.max_samples].tolist()
-        with open(os.path.join(output_path, f"top_{data_amount_name}.jsonl"), 'w', encoding='utf-8',
-                  errors='ignore') as file:
-            for index, data_from in zip(final_index_list, final_data_from):
+        final_index_list = sorted_index.tolist()
+        final_data_from = data_from.tolist()
+        final_scores = sorted_scores.tolist()
+
+        total_score = 0
+        values_added = 0
+        result_file_path = os.path.join(output_path, f"top_{data_amount_name}.jsonl")
+        with open(
+                file=result_file_path,
+                mode='w',
+                encoding='utf-8',
+                errors='ignore'
+        ) as file:
+            for index, data_from, score in zip(final_index_list, final_data_from, final_scores):
                 try:
+                    for prev_values in prev_top_values.values():
+                        if json.loads(all_lines[data_from][index])['id'] in prev_values:
+                            continue
                     file.write(all_lines[data_from][index])
+                    total_score += score
+                    values_added += 1
+                    if total_score >= args.threshold or values_added == args.max_samples:
+                        break
                 except:
                     import pdb
 

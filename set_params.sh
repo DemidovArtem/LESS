@@ -1,3 +1,6 @@
+export TARGET_TASK_NAME="mmlu"
+export EXPERIMENT_POSTFIX="iterative-top-k"
+
 # warmup
 
 export DATA_DIR=../data
@@ -5,7 +8,6 @@ export PERCENTAGE=0.05 # percentage of the full data to train, you can specify t
 export DATA_SEED=3
 export MODEL_PATH=meta-llama/Llama-2-7b-hf
 export WARMUP_JOB_NAME=llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}
-
 
 # build datastore
 
@@ -18,15 +20,25 @@ export BUILD_OUTPUT_PATH=../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}
 export BUILD_DIMS="8192"
 
 # select data
+## grads step
+export SELECT_MODEL_PATH=${MODEL_PATH}
 export TASK=mmlu
 export SELECT_OUTPUT_PATH=../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd # for validation data, we always use sgd
 export SELECT_DIMS="4096 8192" # We use 8192 as our default projection dimension
+## matching step
+export MATCHING_DIM=8192
+export MATCHING_GRADIENT_PATH=../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-${GRADIENT_TYPE}/dim${DIM}
+export TRAIN_FILE_NAMES="flan_v2 cot dolly oasst1"
+export CKPTS="105 211 317 420" # checkpointing index
+export CHECKPOINT_WEIGHTS="1.6877e-05 1.2859e-05 7.7030e-06 2.5616e-06" # average lr of the epoch
+export VALIDATION_GRADIENT_PATH=../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd/dim${DIM}
+export SELECTED_DATA_OUTPUT_PATH="../selected_data"
+
 
 # train
-
-export TARGET_TASK_NAME="tydiqa"
 export SCORE_SCALING='standard'
-export TRAIN_FILES=../data/selected_data/${TARGET_TASK_NAME}/top_p0.05.jsonl
-export TRAIN_JOB_NAME=llama2-7b-less-p${PERCENTAGE}-lora-weighted
+export TRAIN_FILES=../data/selected_data/${TARGET_TASK_NAME}/top_p${PERCENTAGE}.jsonl
+export TRAIN_JOB_NAME=llama2-7b-less-p${PERCENTAGE}-lora-${EXPERIMENT_POSTFIX}
+export TRAIN_MODEL_PATH=${MODEL_PATH}
 
 

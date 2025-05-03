@@ -32,10 +32,11 @@ echo "🔗 Step 2: Running matching..."
 echo "🎯 Step 3: Selecting top-k data..."
 python3 -m less.data_selection.write_selected_data \
     --target_task_names "${TARGET_TASK_NAME}" \
-    --train_file_names "${TRAIN_FILE_NAMES}" \
+    --train_file_names $TRAIN_FILE_NAMES \
     --train_files $(for name in ${TRAIN_FILE_NAMES}; do echo -n "../data/train/processed/${name}/${name}_data.jsonl "; done) \
     --output_path "$SELECTED_DATA_OUTPUT_PATH" \
     --percentage "$PERCENTAGE" \
-    --num_iterations "$NUM_ITERATIONS"
+    --num_iterations "$NUM_ITERATIONS" \
+    --iteration "$ITERATION"
 
 echo "✅ select.sh completed successfully."

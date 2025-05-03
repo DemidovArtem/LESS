@@ -26,6 +26,8 @@ def parse_args():
                                 'the latter is used as overall boundary for iteration.')
     argparser.add_argument('--num_iterations', type=int, default=None,
                            help='The number of iterations to collect top-k in case we do it iteratively.')
+    argparser.add_argument('--iteration', type=int, default=None,
+                           help='Index of current iteration.')
 
     args = argparser.parse_args()
 
@@ -42,9 +44,15 @@ def count_lines(filename):
 
 if __name__ == "__main__":
     args = parse_args()
-    assert len(args.train_file_names) == len(args.train_files)
+    try:
+        assert len(args.train_file_names) == len(args.train_files)
+    except:
+        print(f'{args.train_file_names=}')
+        print(f'{args.train_files=}')
+        raise
     assert args.percentage is not None or args.max_samples is not None
     assert args.threshold is not None or args.num_iterations is not None
+    assert args.iteration is not None or args.num_iterations is None
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     n_train_files = len(args.train_file_names)
 
@@ -63,7 +71,6 @@ if __name__ == "__main__":
         total_samples = sum(num_samples)
 
         prev_top_values = {}
-        iteration = None
         if args.percentage is not None:
             args.max_samples = int(args.percentage * total_samples)
             if args.threshold is None and args.num_iterations is None:
@@ -76,16 +83,14 @@ if __name__ == "__main__":
                             file_index = int(file_index)
                             with open(os.path.join(output_path, file), 'r') as past_file:
                                 prev_top_values[file_index] = [json.loads(line)['id'] for line in past_file]
-                iteration = 0
-                if prev_top_values:
-                    iteration = max(prev_top_values) + 1
+
                 # max_samples is reduced by the number of already selected items
                 prev_values_count = sum([len(value) for value in prev_top_values.values()])
                 if args.threshold:
                     args.max_samples -= prev_values_count
-                    data_amount_name = f't{args.threshold}_{iteration}'
+                    data_amount_name = f't{args.threshold}_{args.iteration}'
                 else:
-                    data_amount_name = f'p{args.percentage}_i{args.num_iterations}_{iteration}'
+                    data_amount_name = f'p{args.percentage}_i{args.num_iterations}_{args.iteration}'
                     args.max_samples = min(args.max_samples - prev_values_count,
                                            args.max_samples // args.num_iterations)
         else:
@@ -107,9 +112,9 @@ if __name__ == "__main__":
         )
         sorted_file_name = 'sorted.csv'
         if args.threshold:
-            sorted_file_name = f'sorted_t{args.threshold}_{iteration}.csv'
+            sorted_file_name = f'sorted_t{args.threshold}_{args.iteration}.csv'
         elif args.num_iterations:
-            sorted_file_name = f'sorted_p{args.percentage}_i{args.num_iterations}_{iteration}.csv'
+            sorted_file_name = f'sorted_p{args.percentage}_i{args.num_iterations}_{args.iteration}.csv'
         sorted_score_file = os.path.join(output_path, sorted_file_name)
 
         data_from = data_from[sorted_index]
@@ -161,3 +166,4 @@ if __name__ == "__main__":
                     import pdb
 
                     pdb.set_trace()
+        print(f'Selected data for training were saved to file {result_file_path}')

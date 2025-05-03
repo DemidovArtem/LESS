@@ -1,6 +1,8 @@
 export TARGET_TASK_NAME="mmlu"
 export EXPERIMENT_POSTFIX="iterative-top-k"
 
+export TASK=${TARGET_TASK_NAME}
+
 # warmup
 
 export DATA_DIR=../data
@@ -21,24 +23,23 @@ export BUILD_DIMS="8192"
 
 # select data
 ## grads step
-export SELECT_MODEL_PATH=${MODEL_PATH}
-export TASK=mmlu
-export SELECT_OUTPUT_PATH=../../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd # for validation data, we always use sgd
-export SELECT_DIMS="4096 8192" # We use 8192 as our default projection dimension
+export SELECT_MODEL_PATH=${DATASTORE_MODEL_PATH}
+export SELECT_OUTPUT_PATH=../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd # for validation data, we always use sgd
+export SELECT_DIMS="8192" # We use 8192 as our default projection dimension
 ## matching step
 export MATCHING_DIM=8192
-export MATCHING_GRADIENT_PATH=../../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TRAINING_DATA_NAME}-ckpt${CKPT}-${GRADIENT_TYPE}/dim${MATCHING_DIM}
+export MATCHING_GRADIENT_PATH=../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/{}-ckpt{}-${GRADIENT_TYPE}/dim${MATCHING_DIM}
 export TRAIN_FILE_NAMES="flan_v2 cot dolly oasst1"
 export CKPTS="422 845 1268 1688" # checkpointing index
 export CHECKPOINT_WEIGHTS="5.005931e-01 3.333333e-01 1.660735e-01 0.000000e+00" # average lr of the epoch
-export VALIDATION_GRADIENT_PATH=../../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd/dim${MATCHING_DIM}
+export VALIDATION_GRADIENT_PATH=../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/{}-ckpt{}-sgd/dim${MATCHING_DIM}
 export SELECTED_DATA_OUTPUT_PATH="../selected_data"
 
 
 # train
 export SCORE_SCALING='none'
 export TRAIN_FILES=../data/selected_data/${TARGET_TASK_NAME}/top_p${PERCENTAGE}.jsonl
-export TRAIN_JOB_NAME=llama2-7b-less-p${PERCENTAGE}-lora-${EXPERIMENT_POSTFIX}
+export TRAIN_JOB_NAME=llama2-7b-less-p${PERCENTAGE}-lora-${EXPERIMENT_POSTFIX}-${TASK}
 export TRAIN_MODEL_PATH=${MODEL_PATH}
 
 

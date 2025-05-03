@@ -20,7 +20,6 @@ argparser.add_argument('--validation_gradient_path', type=str,
 argparser.add_argument('--output_path', type=str, default="selected_data",
                        help='The path to the output')
 
-
 args = argparser.parse_args()
 
 N_SUBTASKS = {"mmlu": 57, "bbh": 27, "tydiqa": 9}
@@ -44,7 +43,7 @@ def calculate_influence_score(training_info: torch.Tensor, validation_info: torc
 # renormalize the checkpoint weights
 if sum(args.checkpoint_weights) != 1:
     s = sum(args.checkpoint_weights)
-    args.checkpoint_weights = [i/s for i in args.checkpoint_weights]
+    args.checkpoint_weights = [i / s for i in args.checkpoint_weights]
 
 # calculate the influence score for each validation task
 for target_task_name in args.target_task_names:
@@ -53,19 +52,27 @@ for target_task_name in args.target_task_names:
         for i, ckpt in enumerate(args.ckpts):
             # validation_path = args.validation_gradient_path.format(
             # target_task_name, ckpt)
-            validation_path = args.validation_gradient_path.format(
-                ckpt, target_task_name)
-            if os.path.isdir(validation_path):
-                validation_path = os.path.join(validation_path, "all_orig.pt")
-            validation_info = torch.load(validation_path)
-
+            validation_info = None
+            for values_to_fill in [(ckpt, target_task_name), (target_task_name, ckpt)]:
+                validation_path = args.validation_gradient_path.format(*values_to_fill)
+                if os.path.isdir(validation_path):
+                    validation_path = os.path.join(validation_path, "all_orig.pt")
+                if not os.path.isfile(validation_path):
+                    continue
+                validation_info = torch.load(validation_path)
+            if validation_info is None:
+                raise ValueError(f'No file {args.validation_gradient_path.format(*values_to_fill)}!')
             if not torch.is_tensor(validation_info):
                 validation_info = torch.tensor(validation_info)
             validation_info = validation_info.to(device).float()
             # gradient_path = args.gradient_path.format(train_file_name, ckpt)
-            gradient_path = args.gradient_path.format(ckpt, train_file_name)
-            if os.path.isdir(gradient_path):
-                gradient_path = os.path.join(gradient_path, "all_orig.pt")
+            gradient_path = None
+            for values_to_fill in [(ckpt, train_file_name), (train_file_name, ckpt)]:
+                gradient_path = args.gradient_path.format(*values_to_fill)
+                if os.path.isdir(gradient_path):
+                    gradient_path = os.path.join(gradient_path, "all_orig.pt")
+                if not os.path.isfile(gradient_path):
+                    continue
             training_info = torch.load(gradient_path)
 
             if not torch.is_tensor(training_info):
@@ -73,8 +80,8 @@ for target_task_name in args.target_task_names:
             training_info = training_info.to(device).float()
 
             influence_score += args.checkpoint_weights[i] * \
-                calculate_influence_score(
-                    training_info=training_info, validation_info=validation_info)
+                               calculate_influence_score(
+                                   training_info=training_info, validation_info=validation_info)
         influence_score = influence_score.reshape(
             influence_score.shape[0], N_SUBTASKS[target_task_name], -1).mean(-1).max(-1)[0]
         output_dir = os.path.join(args.output_path, target_task_name)

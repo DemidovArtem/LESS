@@ -11,7 +11,7 @@ export WARMUP_JOB_NAME=llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}
 
 # build datastore
 
-export CKPT=25
+export CKPT=422
 export TRAINING_DATA_NAME=dolly
 export TRAINING_DATA_FILE=../data/train/processed/${TRAINING_DATA_NAME}/${TRAINING_DATA_NAME}_data.jsonl # when changing data name, change the data path accordingly
 export GRADIENT_TYPE="adam"
@@ -23,20 +23,20 @@ export BUILD_DIMS="8192"
 ## grads step
 export SELECT_MODEL_PATH=${MODEL_PATH}
 export TASK=mmlu
-export SELECT_OUTPUT_PATH=../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd # for validation data, we always use sgd
+export SELECT_OUTPUT_PATH=../../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd # for validation data, we always use sgd
 export SELECT_DIMS="4096 8192" # We use 8192 as our default projection dimension
 ## matching step
 export MATCHING_DIM=8192
-export MATCHING_GRADIENT_PATH=../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-${GRADIENT_TYPE}/dim${DIM}
+export MATCHING_GRADIENT_PATH=../../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TRAINING_DATA_NAME}-ckpt${CKPT}-${GRADIENT_TYPE}/dim${MATCHING_DIM}
 export TRAIN_FILE_NAMES="flan_v2 cot dolly oasst1"
-export CKPTS="105 211 317 420" # checkpointing index
-export CHECKPOINT_WEIGHTS="1.6877e-05 1.2859e-05 7.7030e-06 2.5616e-06" # average lr of the epoch
-export VALIDATION_GRADIENT_PATH=../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd/dim${DIM}
+export CKPTS="422 845 1268 1688" # checkpointing index
+export CHECKPOINT_WEIGHTS="5.005931e-01 3.333333e-01 1.660735e-01 0.000000e+00" # average lr of the epoch
+export VALIDATION_GRADIENT_PATH=../../grads/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd/dim${MATCHING_DIM}
 export SELECTED_DATA_OUTPUT_PATH="../selected_data"
 
 
 # train
-export SCORE_SCALING='standard'
+export SCORE_SCALING='none'
 export TRAIN_FILES=../data/selected_data/${TARGET_TASK_NAME}/top_p${PERCENTAGE}.jsonl
 export TRAIN_JOB_NAME=llama2-7b-less-p${PERCENTAGE}-lora-${EXPERIMENT_POSTFIX}
 export TRAIN_MODEL_PATH=${MODEL_PATH}

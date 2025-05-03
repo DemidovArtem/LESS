@@ -135,12 +135,12 @@ if __name__ == "__main__":
         total_score = 0
         values_added = 0
         result_file_path = os.path.join(output_path, f"top_{data_amount_name}.jsonl")
-        with open(
+        with (open(
                 file=result_file_path,
                 mode='w',
                 encoding='utf-8',
                 errors='ignore'
-        ) as file:
+        ) as file):
             for index, data_from, score in zip(final_index_list, final_data_from, final_scores):
                 try:
                     for prev_values in prev_top_values.values():
@@ -149,9 +149,15 @@ if __name__ == "__main__":
                     file.write(all_lines[data_from][index])
                     total_score += score
                     values_added += 1
-                    if total_score >= args.threshold or values_added == args.max_samples:
+                    if (
+                            (args.threshold is not None and total_score >= args.threshold)
+                            or values_added == args.max_samples
+                    ):
                         break
                 except:
+                    import traceback
+
+                    print(traceback.format_exc())
                     import pdb
 
                     pdb.set_trace()

@@ -52,6 +52,9 @@ class DataArguments:
     scaling: Optional[str] = field(
         default=None, metadata={"help": ("Scaling strategy to use")},
     )
+    scores_file_name: Optional[str] = field(
+        default='scores.csv', metadata={'help': 'Path to file with scores'}
+    )
 
 
 def get_data_statistics(lm_datasets):

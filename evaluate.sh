@@ -30,7 +30,7 @@ python -m eval."${TASK}".run_eval \
     --n_shot 1 \
     --max_num_examples_per_lang 200 \
     --max_context_length 1024 \
-    --save_dir "${TRAIN_MODEL_PATH}/eval/" \
+    --save_dir "${TRAIN_MODEL_PATH}/eval/${ITERATION}" \
     --model "${TRAIN_MODEL_PATH}" \
     --tokenizer "${TRAIN_MODEL_PATH}" \
     --eval_batch_size 1 \

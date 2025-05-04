@@ -35,7 +35,10 @@ for ((i=0; i<NUM_ITERATIONS; i++)); do
     echo "🧠 Running train.sh..."
     ./train.sh
 
-#    rm -rf $SELECT_OUTPUT_PATH
+#    echo "Running evaluate.sh..."
+#    ./evaluate.sh
+    echo "Uploading data to backblaze..."
+    ./upload_to_b2.sh
     echo "✅ Iteration $i completed successfully."
 done
 

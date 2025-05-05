@@ -22,18 +22,24 @@ fi
 : "${TASK:?TASK variable is not set}"
 : "${TRAIN_MODEL_PATH:?TRAIN_MODEL_PATH variable is not set}"
 
-# Training step
-echo "🧠 Starting evaluation..."
+# Build command
+cmd="python -m eval.${TASK}.run_eval \
+    --data_dir /workspace/data/eval/${TASK} \
+    --save_dir ${TRAIN_MODEL_PATH}/eval/${ITERATION} \
+    --model ${TRAIN_MODEL_PATH} \
+    --tokenizer ${TRAIN_MODEL_PATH} \
+    --eval_batch_size 1 \
+    --use_chat_format \
+    --chat_formatting_function eval.templates.create_prompt_with_tulu_chat_format"
 
-python -m eval."${TASK}".run_eval \
-    --data_dir "/workspace/data/eval/${TASK}" \
+if [ "$TASK" != "mmlu" ]; then
+    cmd+=" \
     --n_shot 1 \
     --max_num_examples_per_lang 200 \
     --max_context_length 1024 \
-    --save_dir "${TRAIN_MODEL_PATH}/eval/${ITERATION}" \
-    --model "${TRAIN_MODEL_PATH}" \
-    --tokenizer "${TRAIN_MODEL_PATH}" \
-    --eval_batch_size 1 \
-    --use_chat_format \
-    --convert_to_bf16 \
-    --chat_formatting_function eval.templates.create_prompt_with_tulu_chat_format
+    --convert_to_bf16"
+fi
+
+# Run the evaluation
+echo "🧪 Running evaluation for task: $TASK"
+eval "$cmd"

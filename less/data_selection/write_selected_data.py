@@ -81,6 +81,9 @@ if __name__ == "__main__":
                         if file.startswith('top_') and file.endswith('.jsonl'):
                             file_index = file.split('_')[-1].split('.')[0]  # last value after _ and before extension
                             file_index = int(file_index)
+                            # skip files from past runs (same iteration index or bigger)
+                            if file_index >= args.index:
+                                continue
                             with open(os.path.join(output_path, file), 'r') as past_file:
                                 prev_top_values[file_index] = [json.loads(line)['id'] for line in past_file]
 

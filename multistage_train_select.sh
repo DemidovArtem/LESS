@@ -13,7 +13,9 @@ trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
 source set_params.sh
 
-export NUM_ITERATIONS=10
+export NUM_ITERATIONS=2
+
+
 export SET_PARAMS=0
 
 for ((i=0; i<NUM_ITERATIONS; i++)); do
@@ -35,8 +37,8 @@ for ((i=0; i<NUM_ITERATIONS; i++)); do
     echo "🧠 Running train.sh..."
     ./train.sh
 
-#    echo "Running evaluate.sh..."
-#    ./evaluate.sh
+    echo "Running evaluate.sh..."
+    ./evaluate.sh
     echo "Uploading data to backblaze..."
     ./upload_to_b2.sh
     echo "✅ Iteration $i completed successfully."

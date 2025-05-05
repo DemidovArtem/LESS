@@ -1,5 +1,5 @@
 export TARGET_TASK_NAME="mmlu"
-export EXPERIMENT_POSTFIX="iterative-top-k"
+export EXPERIMENT_POSTFIX="iterative-top-k-2"
 
 export TASK=${TARGET_TASK_NAME}
 

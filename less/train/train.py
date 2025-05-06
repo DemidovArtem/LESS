@@ -71,6 +71,37 @@ class WeightedTrainer(Trainer):
             print('Weight is not defined')
         return (loss, outputs) if return_outputs else loss
 
+    def create_scheduler(self, num_training_steps: int, optimizer=None):
+        optimizer = optimizer or self.optimizer
+
+        # Total across all iterations (virtual total steps)
+        num_iterations = getattr(self.args, "num_iterations", None)
+        current_iteration = getattr(self.args, "iteration", 0)
+
+        if num_iterations is None:
+            # Use default Hugging Face behavior
+            return super().create_scheduler(num_training_steps, optimizer)
+
+        # Compute total "virtual" steps
+        total_virtual_steps = num_training_steps * num_iterations
+        current_virtual_step_offset = num_training_steps * current_iteration
+
+        warmup_steps = int(self.args.warmup_ratio * total_virtual_steps)
+
+        def lr_lambda(current_step):
+            # Convert local step into global virtual step
+            global_step = current_virtual_step_offset + current_step
+
+            if global_step < warmup_steps:
+                return float(global_step) / float(max(1, warmup_steps))
+            return max(
+                0.0,
+                float(total_virtual_steps - global_step) / float(max(1, total_virtual_steps - warmup_steps))
+            )
+
+        self.lr_scheduler = LambdaLR(optimizer, lr_lambda)
+        return self.lr_scheduler
+
 
 def main():
     parser = HfArgumentParser(
@@ -212,12 +243,16 @@ def main():
             tokenizer=tokenizer,
             model=model,
             padding="longest",
-
         )
     )
 
     # Training
-    train_result = trainer.train()
+    resume_from_checkpoint = None
+    if training_args.num_iteraions is not None:
+        assert training_args.iteration is not None
+        if training_args.iteration > 0:
+            resume_from_checkpoint = True
+    train_result = trainer.train(resume_from_checkpoint=resume_from_checkpoint)
     trainer.save_model()  # Saves the tokenizer too for easy upload
 
     metrics = train_result.metrics

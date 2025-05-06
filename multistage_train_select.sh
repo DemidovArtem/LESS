@@ -26,10 +26,9 @@ for ((i=0; i<NUM_ITERATIONS; i++)); do
         export SELECT_MODEL_PATH=${TRAIN_MODEL_PATH}
     fi
 
-    export SELECT_OUTPUT_PATH=../grads/llama2-7b-p${PERCENTAGE}-i${NUM_ITERATIONS}-${i}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd
-
     echo "🔍 Running select.sh..."
     ./select.sh
+
 
     export SCORE_FILE="sorted_p${PERCENTAGE}_i${NUM_ITERATIONS}_${i}.csv"
     export TRAIN_FILES="../selected_data/mmlu/top_p${PERCENTAGE}_i${NUM_ITERATIONS}_${i}.jsonl"

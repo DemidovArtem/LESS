@@ -26,6 +26,8 @@ echo "🧠 Starting training with LoRA..."
     "$TRAIN_JOB_NAME" \
     "$TARGET_TASK_NAME" \
     "$SCORE_SCALING" \
-    "$SCORE_FILE" | tee log.txt
+    "$SCORE_FILE" \
+    "$NUM_ITERATIONS" \
+    "$ITERATION" | tee log.txt
 
 echo "✅ train.sh completed successfully."

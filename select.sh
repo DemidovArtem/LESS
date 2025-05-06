@@ -20,7 +20,16 @@ fi
 
 # Step 1: Gradients step
 echo "🔍 Step 1: Running grad extraction..."
-./less/scripts/get_info/grad/get_eval_lora_grads.sh "$TASK" "$DATA_DIR" "$SELECT_MODEL_PATH" "$SELECT_OUTPUT_PATH" "$SELECT_DIMS" | tee log.txt
+for CKPT in $CKPTS; do
+    export SELECT_MODEL_PATH=../out/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/checkpoint-${CKPT}
+    export SELECT_OUTPUT_PATH=../grads/llama2-7b-p${PERCENTAGE}-${EXPERIMENT_POSTFIX}-i${NUM_ITERATIONS}-${ITERATION}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd
+
+    echo "🔍 Grad extraction for CKPT=${CKPT}..."
+    echo "SELECT_MODEL_PATH=${SELECT_MODEL_PATH}"
+    echo "SELECT_OUTPUT_PATH=${SELECT_OUTPUT_PATH}"
+    ./less/scripts/get_info/grad/get_eval_lora_grads.sh "$TASK" "$DATA_DIR" "$SELECT_MODEL_PATH" "$SELECT_OUTPUT_PATH" "$SELECT_DIMS" | tee log.txt
+done
+
 
 # Step 2: Matching step
 echo "🔗 Step 2: Running matching..."

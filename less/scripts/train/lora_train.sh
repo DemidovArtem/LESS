@@ -8,6 +8,8 @@ job_name=$3
 target_task_name=$4
 scaling=$5
 scores_file_name=$6
+num_iterations=$7
+iteration=$8
 
 output_dir=../out/${job_name}
 if [[ ! -d $output_dir ]]; then
@@ -27,7 +29,9 @@ training_args="$base_training_args \
 --target_task_name $target_task_name \
 --scaling $scaling \
 --train_files ${train_files[@]} 2>&1 \
---scores_file_name $scores_file_name | tee $output_dir/train.log"
+--scores_file_name $scores_file_name \
+--num_iterations $num_iterations \
+--iteration $iteration | tee $output_dir/train.log"
 
 echo "$header $training_args"
 eval "$header" "$training_args"

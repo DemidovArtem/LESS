@@ -1,4 +1,5 @@
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import dataclass, field
+from typing import Optional
 
 from transformers import TrainingArguments as TA
 from transformers.utils import logging
@@ -76,6 +77,19 @@ class TrainingArguments(TA):
                 "The dataset to use for training. "
             )
         },
+    )
+
+    num_iterations: Optional[int] = field(
+        default=None,
+        metadata={
+            'help': 'Number of iterations if iterative training'
+        }
+    )
+    iteration: Optional[int] = field(
+        default=None,
+        metadata={
+            'help': 'Index of current iteration if multiple training iterations'
+        }
     )
 
     def __post_init__(self):

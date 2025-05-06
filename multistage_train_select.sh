@@ -11,6 +11,8 @@ error_handler() {
 # Trap any error, call error_handler with line number and last command
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
+cd /workspace/LESS || return 1
+
 source set_params.sh
 
 export NUM_ITERATIONS=2
@@ -31,7 +33,7 @@ for ((i=0; i<NUM_ITERATIONS; i++)); do
 
 
     export SCORE_FILE="sorted_p${PERCENTAGE}_i${NUM_ITERATIONS}_${i}.csv"
-    export TRAIN_FILES="../selected_data/mmlu/top_p${PERCENTAGE}_i${NUM_ITERATIONS}_${i}.jsonl"
+    export TRAIN_FILES="/workspace/selected_data/mmlu/top_p${PERCENTAGE}_i${NUM_ITERATIONS}_${i}.jsonl"
     echo "Set training params SCORE_FILE='$SCORE_FILE', TRAIN_FILES='$TRAIN_FILES'"
     echo "🧠 Running train.sh..."
     ./train.sh

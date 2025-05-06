@@ -18,11 +18,12 @@ else
     echo "⚠️  SET_PARAMS is not 1 — skipping set_params.sh"
 fi
 
+cd /workspace/LESS || return 1
 # Step 1: Gradients step
 echo "🔍 Step 1: Running grad extraction..."
 for CKPT in $CKPTS; do
-    export SELECT_MODEL_PATH=../out/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/checkpoint-${CKPT}
-    export SELECT_OUTPUT_PATH=../grads/llama2-7b-p${PERCENTAGE}-${EXPERIMENT_POSTFIX}-i${NUM_ITERATIONS}-${ITERATION}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd
+    export SELECT_MODEL_PATH=/workspace/out/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/checkpoint-${CKPT}
+    export SELECT_OUTPUT_PATH=/workspace/grads/llama2-7b-p${PERCENTAGE}-${EXPERIMENT_POSTFIX}-i${NUM_ITERATIONS}-${ITERATION}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd
 
     echo "🔍 Grad extraction for CKPT=${CKPT}..."
     echo "SELECT_MODEL_PATH=${SELECT_MODEL_PATH}"
@@ -42,7 +43,7 @@ echo "🎯 Step 3: Selecting top-k data..."
 python3 -m less.data_selection.write_selected_data \
     --target_task_names "${TARGET_TASK_NAME}" \
     --train_file_names $TRAIN_FILE_NAMES \
-    --train_files $(for name in ${TRAIN_FILE_NAMES}; do echo -n "../data/train/processed/${name}/${name}_data.jsonl "; done) \
+    --train_files $(for name in ${TRAIN_FILE_NAMES}; do echo -n "/workspace/data/train/processed/${name}/${name}_data.jsonl "; done) \
     --output_path "$SELECTED_DATA_OUTPUT_PATH" \
     --percentage "$PERCENTAGE" \
     --num_iterations "$NUM_ITERATIONS" \

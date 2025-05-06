@@ -22,6 +22,9 @@ fi
 : "${TASK:?TASK variable is not set}"
 : "${TRAIN_MODEL_PATH:?TRAIN_MODEL_PATH variable is not set}"
 
+
+cd /workspace/LESS/evaluate || return 1
+
 # Build command
 cmd="python -m eval.${TASK}.run_eval \
     --data_dir /workspace/data/eval/${TASK} \

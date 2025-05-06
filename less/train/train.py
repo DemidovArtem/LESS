@@ -15,6 +15,7 @@ from less.train.training_arguments import TrainingArguments
 from less.train.weighting_strategy import add_weights
 # from instruction_tuning.train.lora_trainer import LoRAFSDPTrainer, Trainer
 from peft import LoraConfig, PeftModel, TaskType, get_peft_model
+from torch.optim.lr_scheduler import LambdaLR
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           DataCollatorForSeq2Seq, HfArgumentParser, Trainer,
                           set_seed)
@@ -248,7 +249,7 @@ def main():
 
     # Training
     resume_from_checkpoint = None
-    if training_args.num_iteraions is not None:
+    if training_args.num_iterations is not None:
         assert training_args.iteration is not None
         if training_args.iteration > 0:
             resume_from_checkpoint = True

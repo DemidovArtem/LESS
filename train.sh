@@ -18,6 +18,10 @@ else
     echo "⚠️  SET_PARAMS is not 1 — skipping set_params.sh"
 fi
 
+
+cd /workspace/LESS || return 1
+
+
 # Training step
 echo "🧠 Starting training with LoRA..."
 ./less/scripts/train/lora_train.sh \

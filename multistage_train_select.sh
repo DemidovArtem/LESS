@@ -15,7 +15,7 @@ cd /workspace/LESS || return 1
 
 source set_params.sh
 
-export NUM_ITERATIONS=2
+export NUM_ITERATIONS=1
 
 
 export SET_PARAMS=0
@@ -23,9 +23,11 @@ export SET_PARAMS=0
 for ((i=0; i<NUM_ITERATIONS; i++)); do
     echo "▶️ Starting iteration $i..."
     export ITERATION=${i}
-    if [ "$i" -ne 0 ]; then
+    export SKIP_SELECT_MODEL_CHOICE=0
+    if [ "$i" -ne "0" ]; then
         export TRAIN_MODEL_PATH="../out/${TRAIN_JOB_NAME}"
         export SELECT_MODEL_PATH=${TRAIN_MODEL_PATH}
+        export SKIP_SELECT_MODEL_CHOICE=1
     fi
 
     echo "🔍 Running select.sh..."
@@ -46,4 +48,5 @@ for ((i=0; i<NUM_ITERATIONS; i++)); do
 done
 
 export SET_PARAMS=1
+export SKIP_SELECT_MODEL_CHOICE=0
 echo "🎉 All iterations completed."

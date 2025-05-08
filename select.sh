@@ -22,7 +22,9 @@ cd /workspace/LESS || return 1
 # Step 1: Gradients step
 echo "🔍 Step 1: Running grad extraction..."
 for CKPT in $CKPTS; do
-    export SELECT_MODEL_PATH=/workspace/out/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/checkpoint-${CKPT}
+    if [ "$SKIP_SELECT_MODEL_CHOICE" -ne "1" ]; then
+        export SELECT_MODEL_PATH=/workspace/out/llama2-7b-p${PERCENTAGE}-lora-seed${DATA_SEED}/checkpoint-${CKPT}
+    fi
     export SELECT_OUTPUT_PATH=/workspace/grads/llama2-7b-p${PERCENTAGE}-${EXPERIMENT_POSTFIX}-i${NUM_ITERATIONS}-${ITERATION}-lora-seed${DATA_SEED}/${TASK}-ckpt${CKPT}-sgd
 
     echo "🔍 Grad extraction for CKPT=${CKPT}..."

@@ -23,7 +23,11 @@ fi
 : "${TRAIN_MODEL_PATH:?TRAIN_MODEL_PATH variable is not set}"
 
 
-cd /workspace/LESS/evaluate || return 1
+cd /workspace/LESS/evaluation || return 1
+#export PYTHONPATH=/workspace/open-instruct:$PYTHONPATH
+
+export EVAL_PATH=$TRAIN_MODEL_PATH
+[[ "${TRAIN_MODEL_PATH}" != /* ]] && export EVAL_PATH="result_${TRAIN_MODEL_PATH}"
 
 # Build command
 cmd="python -m eval.${TASK}.run_eval \

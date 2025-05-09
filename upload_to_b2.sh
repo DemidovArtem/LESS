@@ -17,7 +17,7 @@ cd /workspace/LESS || return 1
 # B2 settings
 B2_BUCKET="less-paper"
 B2_BASE_PATH="artem"
-MODEL_FOLDER="../out/$TRAIN_JOB_NAME"
+MODEL_FOLDER="/workspace/out/$TRAIN_JOB_NAME"
 
 echo "📁 Syncing model directory: $MODEL_FOLDER"
 b2 sync "$MODEL_FOLDER" "b2://${B2_BUCKET}/${B2_BASE_PATH}/$(basename "${TRAIN_JOB_NAME}_${ITERATION}")"

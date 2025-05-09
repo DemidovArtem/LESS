@@ -84,15 +84,11 @@ class WeightedTrainer(Trainer):
             return super().create_scheduler(num_training_steps, optimizer)
 
         # Compute total "virtual" steps
-        total_virtual_steps = num_training_steps * num_iterations
-        current_virtual_step_offset = num_training_steps * current_iteration
+        total_virtual_steps = num_training_steps // (current_iteration + 1) * num_iterations
 
         warmup_steps = int(self.args.warmup_ratio * total_virtual_steps)
 
-        def lr_lambda(current_step):
-            # Convert local step into global virtual step
-            global_step = current_virtual_step_offset + current_step
-
+        def lr_lambda(global_step):
             if global_step < warmup_steps:
                 return float(global_step) / float(max(1, warmup_steps))
             return max(
@@ -233,7 +229,9 @@ def main():
         print(model)
     elif not dist.is_initialized():
         print(model)
-
+    if training_args.num_iterations is not None:
+        if training_args.iteration < training_args.num_iterations - 1:
+            training_args.num_train_epochs = 1
     trainer = WeightedTrainer(
         model=model,
         args=training_args,

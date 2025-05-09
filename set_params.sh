@@ -13,9 +13,9 @@ trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
 cd /workspace/LESS || return 1
 
-export TARGET_TASK_NAME="bbh"
+export TARGET_TASK_NAME="mmlu"
 
-export EXPERIMENT_POSTFIX="first-checkpoint"
+export EXPERIMENT_POSTFIX="first-checkpoint-iterative"
 export CKPTS="422" # checkpointing index
 export CHECKPOINT_WEIGHTS="5.005931e-01" # average lr of the epoch
 

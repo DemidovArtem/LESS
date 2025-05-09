@@ -15,7 +15,7 @@ cd /workspace/LESS || return 1
 
 source set_params.sh
 
-export NUM_ITERATIONS=1
+export NUM_ITERATIONS=2
 
 
 export SET_PARAMS=0
@@ -25,7 +25,7 @@ for ((i=0; i<NUM_ITERATIONS; i++)); do
     export ITERATION=${i}
     export SKIP_SELECT_MODEL_CHOICE=0
     if [ "$i" -ne "0" ]; then
-        export TRAIN_MODEL_PATH="../out/${TRAIN_JOB_NAME}"
+        export TRAIN_MODEL_PATH="/workspace/out/${TRAIN_JOB_NAME}"
         export SELECT_MODEL_PATH=${TRAIN_MODEL_PATH}
         export SKIP_SELECT_MODEL_CHOICE=1
     fi
@@ -35,14 +35,19 @@ for ((i=0; i<NUM_ITERATIONS; i++)); do
 
 
     export SCORE_FILE="sorted_p${PERCENTAGE}_i${NUM_ITERATIONS}_${i}.csv"
-    export TRAIN_FILES="/workspace/selected_data/mmlu/top_p${PERCENTAGE}_i${NUM_ITERATIONS}_${i}.jsonl"
+    export TRAIN_FILES=$(for j in $(seq 0 $i); do echo -n "/workspace/selected_data/${TASK}/top_p${PERCENTAGE}_i${NUM_ITERATIONS}_${j}.jsonl "; done)
     echo "Set training params SCORE_FILE='$SCORE_FILE', TRAIN_FILES='$TRAIN_FILES'"
     echo "🧠 Running train.sh..."
     ./train.sh
 
+    echo "Uploading data to backblaze..."
+    ./upload_to_b2.sh
+    echo "✅ Iteration $i completed successfully."
+
     echo "Running evaluate.sh..."
     ./evaluate.sh
-    echo "Uploading data to backblaze..."
+
+    echo "Uploading data to backblaze after evaluation..."
     ./upload_to_b2.sh
     echo "✅ Iteration $i completed successfully."
 done

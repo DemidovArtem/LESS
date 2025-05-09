@@ -50,7 +50,8 @@ def load_raw_dataset(train_files: Union[List[str], str], sample_size=None, sampl
     return sampled_dataset
 
 
-def encode_data(raw_datasets, tokenizer, max_seq_length, processing_num_workers=10, overwrite_cache=False, func_name="encode_with_messages_format"):
+def encode_data(raw_datasets, tokenizer, max_seq_length, processing_num_workers=10, overwrite_cache=False,
+                func_name="encode_with_messages_format"):
     """ encode data with the specified tokenizer and the chat format. """
     # if already encoded, return
     if "input_ids" in raw_datasets.features:
@@ -147,15 +148,16 @@ def encode_with_messages_format(example, tokenizer, max_seq_length):
                 message_start_idx = 0
             else:
                 message_start_idx = tokenizer(
-                    concat_messages(messages[:message_idx], tokenizer), return_tensors='pt', max_length=max_seq_length, truncation=True
+                    concat_messages(messages[:message_idx], tokenizer), return_tensors='pt', max_length=max_seq_length,
+                    truncation=True
                 ).input_ids.shape[1]
-            if message_idx < len(messages) - 1 and messages[message_idx+1]["role"] == "assistant":
+            if message_idx < len(messages) - 1 and messages[message_idx + 1]["role"] == "assistant":
                 # here we also ignore the role of the assistant
                 messages_so_far = concat_messages(
-                    messages[:message_idx+1], tokenizer) + "<|assistant|>\n"
+                    messages[:message_idx + 1], tokenizer) + "<|assistant|>\n"
             else:
                 messages_so_far = concat_messages(
-                    messages[:message_idx+1], tokenizer)
+                    messages[:message_idx + 1], tokenizer)
             message_end_idx = tokenizer(
                 messages_so_far,
                 return_tensors='pt',
@@ -184,7 +186,7 @@ def concat_messages(messages, tokenizer):
             message_text += "<|user|>\n" + message["content"].strip() + "\n"
         elif message["role"] == "assistant":
             message_text += "<|assistant|>\n" + \
-                message["content"].strip() + tokenizer.eos_token + "\n"
+                            message["content"].strip() + tokenizer.eos_token + "\n"
         else:
             raise ValueError("Invalid role: {}".format(message["role"]))
     return message_text
@@ -207,7 +209,7 @@ def encode_with_messages_format_with_llama2_chat(example, tokenizer, max_seq_len
         for message in messages:
             if message["role"] == "user":
                 formatted_text += bos + \
-                    f"{B_INST} {(message['content']).strip()} {E_INST}"
+                                  f"{B_INST} {(message['content']).strip()} {E_INST}"
             elif message["role"] == "assistant":
                 formatted_text += f" {(message['content'])} " + eos
             else:
@@ -232,10 +234,11 @@ def encode_with_messages_format_with_llama2_chat(example, tokenizer, max_seq_len
                 message_start_idx = 0
             else:
                 message_start_idx = tokenizer(
-                    _concat_messages(messages[:message_idx]), return_tensors='pt', max_length=max_seq_length, truncation=True
+                    _concat_messages(messages[:message_idx]), return_tensors='pt', max_length=max_seq_length,
+                    truncation=True
                 ).input_ids.shape[1]
-            if messages[message_idx+1]["role"] == "assistant":
-                messages_so_far = _concat_messages(messages[:message_idx+1])
+            if messages[message_idx + 1]["role"] == "assistant":
+                messages_so_far = _concat_messages(messages[:message_idx + 1])
             message_end_idx = tokenizer(
                 messages_so_far,
                 return_tensors='pt',

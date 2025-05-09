@@ -156,9 +156,13 @@ if __name__ == "__main__":
                             or values_added >= args.max_samples
                     ):
                         break
+                    exist = False
                     for prev_values in prev_top_values.values():
                         if json.loads(all_lines[data_from][index])['id'] in prev_values:
-                            continue
+                            exist = True
+                            break
+                    if exist:
+                        continue
                     file.write(all_lines[data_from][index])
                     total_score += score
                     values_added += 1
